@@ -3,3 +3,4 @@
 1. python
 2. Does not support rendering
 3. Unplayable by humans
+4. simple algorithm
