@@ -9,7 +9,7 @@ class Map():
         EMPTY = 0
         APPLE = 1
         BANANA = 2
-        ORANGE = 3
+        #ORANGE = 3
         #GRAPE = 4
         #WATERMELON = 5
         #STRAWBERRY = 6
@@ -20,10 +20,10 @@ class Map():
     diretion = {}
     dir = namedtuple('dir', ['x', 'y'])
 
-    diretion['up'] = dir(0, -1)
-    diretion['down'] = dir(0, 1)
-    diretion['left'] = dir(-1, 0)
-    diretion['right'] = dir(1, 0)
+    diretion['up'] = dir(-1, 0)
+    diretion['down'] = dir(1, 0)
+    diretion['left'] = dir(0, -1)
+    diretion['right'] = dir(0, 1)
 
     def __init__(self, max_x, max_y, n_target, target_type, n_move, board):
         self.ismatched = [[False for _ in range(max_x)] for _ in range(max_y)]
@@ -59,12 +59,12 @@ class Map():
     def block_layout(self):
         for x in range(self.max_x):
             for y in range(self.max_y):
-                if self.board[x][y] != self.CellType.OBSTACLE:
-                    self.board[x][y] = random.choice(list(self.CellType)[2:])
+                if self.board[y][x] != self.CellType.OBSTACLE:
+                    self.board[y][x] = random.choice(list(self.CellType)[2:])
 
-        #while self.isfind_matched_block():
-        #    self.destroy()
-        #    self.fill()
+        while self.mark_matched_block():
+            self.destroy()
+            self.fill()
 
     def find_matching_block(self):
         for x in range(self.max_x):
@@ -85,15 +85,18 @@ class Map():
         count = self.cnt_matched_block(x, y) 
 
         if count >= 3: 
-            if self.board[x][y] == self.target_type:
-                self.matching_target.append({'x' : x, 'y' : y, 'dir': dir_key, 'count' : count})
+            if self.board[y][x] == self.target_type:
+                self.matching_target.append({'x' : x, 'y' : y, 'dir': dir_key})
             else :
-                self.matching_block.append({'x' : x, 'y' : y, 'dir': dir_key, 'count' : count})        
+                self.matching_block.append({'x' : x, 'y' : y, 'dir': dir_key})        
 
     def mark_matched_block(self):
         ismarked = False
         for x in range(self.max_x):
             for y in range(self.max_y):
+                if self.isout_of_range(x, y):
+                    continue
+
                 cnt_up = self.matched_in_direction(x, y, self.diretion['up'])
                 cnt_down = self.matched_in_direction(x, y, self.diretion['down'])
                 cnt_left = self.matched_in_direction(x, y, self.diretion['left'])
@@ -101,19 +104,21 @@ class Map():
 
                 if cnt_up + cnt_down + 1 >= 3:
                     ismarked = True
-                    for match_y in cnt_up:
-                        self.ismatched[x][y - match_y] = True
+                    self.ismatched[y][x] = True
+                    for match_y in range(cnt_up):
+                        self.ismatched[y - match_y][x] = True
                     
-                    for match_y in cnt_down:
-                        self.ismatched[x][y + match_y] = True
+                    for match_y in  range(cnt_down):
+                        self.ismatched[y + match_y][x] = True
                         
                 if cnt_left + cnt_right + 1 >= 3:
                     ismarked = True
-                    for match_x in cnt_left:
-                        self.ismatched[x - match_x][y] = True
+                    self.ismatched[y][x] = True
+                    for match_x in range(cnt_left):
+                        self.ismatched[y][x - match_x] = True
                     
-                    for match_x in cnt_right:
-                        self.ismatched[x + match_x][y] = True
+                    for match_x in range(cnt_right):
+                        self.ismatched[y][x + match_x] = True
 
         return ismarked
 
@@ -123,35 +128,73 @@ class Map():
         
         return max(cnt_Vertical, cnt_Landscape)    
 
-    def matched_in_direction(self, x, y, dx, dy):
-        block_type = self.board[x][y]
+    def matched_in_direction(self, x, y, dir):
+        block_type = self.board[y][x]
         cnt = 0
+        print(x)
+        print(y)
+        self.board_print()
+        x += dir.x
+        y += dir.y
+        print(x)
+        print(y)
 
-        while block_type == self.board[x + dx][y + dy]:
+        while not self.isout_of_range(x, y) and block_type == self.board[y][x]:
             cnt += 1
+            x += dir.x
+            y += dir.y
 
         return cnt
     
     def isout_of_range(self, x, y):
-        if self.board[x][y] == self.CellType.OBSTACLE or x > self.max_x or y > self.max_y or  x < 0 or y < 0:
+        if self.board[y][x] == self.CellType.OBSTACLE or x > self.max_x or y > self.max_y or  x < 0 or y < 0:
             return True
         
         return False
     
-    #def swap(self):
+    def swap(self):
+        isswap = False
+        if len(self.matching_target) != 0:
+            isswap = True
+            random_element = random.choice(self.matching_target)
+            x = self.matching_target['x'] in random_element
+            y = self.matching_target['y'] in random_element
+            dir = self.matching_target['dir'] in random_element
 
-        #temp = self.board[x_1][y_1]
-        #self.board[x_1][y_1] = self.board[x_2][y_2]
-        #self.board[x_2][y_2] = temp
+            temp = self.board[y][x]
+            self.board[y][x] = self.board[y + self.diretion[str(dir)].y][x + self.diretion[str(dir)].x]
+            self.board[y + self.diretion[str(dir)].y][x + self.diretion[str(dir)].x] = temp
+
+        elif len(self.matching_block) != 0:
+            isswap = True
+            random_element = random.choice(self.matching_block)
+            
+            x = self.matching_block['x'] in random_element
+            y = self.matching_block['y'] in random_element
+            dir = self.matching_block['dir'] in random_element
+
+            temp = self.board[y][x]
+            self.board[y][x] = self.board[y + self.diretion[str(dir)].y][x + self.diretion[str(dir)].x]
+            self.board[y + self.diretion[str(dir)].y][x + self.diretion[str(dir)].x] = temp
         
+        if not isswap:
+            print("failed to swap")
+    
     def destroy(self):
-        for x in self.max_x:
-            for y in self.max_y:
-                if self.ismatched[x][y] == True:
-                    self.board[x][y] = self.CellType.EMPTY
+        for x in range(self.max_x):
+            for y in range(self.max_y):
+                if self.ismatched[y][x] == True:
+                    self.board[y][x] = self.CellType.EMPTY
 
     def shuffle(self):
+        flat_list = [self.board[y][x] for x in range(self.max_x) for y in range(self.max_y) if self.board[y][x] != self.CellType.EMPTY]
+        random.shuffle(flat_list)
 
+        index = 0
+        for x in range(self.max_x):
+            for y in range(self.max_y):
+                self.board[y][x] = flat_list[index]
+                index += 1
 
         while self.isfind_matched_block():
             self.destroy()
@@ -159,10 +202,19 @@ class Map():
 
     #def drop(self):
 
-    #def fill(self):
+    def fill(self):
+        for x in range(self.max_x):
+            for y in range(self.max_y):
+                if self.board[y][x] == self.CellType.EMPTY:
+                    self.board[y][x] = random.choice(list(self.CellType)[2:])
+
+        self.clear_mark()
+
+    def clear_mark(self):
+        self.ismatched = [[False for _ in range(self.max_x)] for _ in range(self.max_y)]
 
     def board_print(self):
-        for row in self.board:
-            for cell in row:
-                print(cell.value, end=' ')
+        for x in range(self.max_x):
+            for y in range(self.max_y):
+                print(self.board[y][x].value, end=' ')
             print() 
