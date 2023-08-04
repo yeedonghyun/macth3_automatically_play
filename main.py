@@ -1,28 +1,33 @@
-import randomPlay
+from Map import Map
 import numpy as np
 
-from enum import Enum
-
-class TileType(Enum):
-	OBSTACLE = -1
-	EMPTY = 0
-        
-def main(max_x, max_y, target, n_move):
-
-    test_map = -np.ones((MAX_X, MAX_Y, len(TileType)), dtype=int)
-    test_map[1:-1, 1:-1] = 0
-
-    test = randomPlay.Map(max_x, max_y, target, n_move, test_map)
-    is_clear = test.play(test_map)
+def main(max_x, max_y, n_target, target_type, n_move, board):
+    
+    test = Map(max_x, max_y, n_target, target_type, n_move, board)
+    is_clear = test.play()
     print(is_clear)
 
 ############### MAIN ################
 
 MAX_X = 7
 MAX_Y = 7
-TARGET = 15
+N_TARGET = 15
+TARGET_TYPE = Map.CellType.APPLE
 N_MOVE = 40
 
+board = np.full((MAX_X, MAX_Y), Map.CellType.OBSTACLE)
+board[1:-1, 1:-1] = Map.CellType.EMPTY
+
+#board = np.array([
+#    [   [-1, -1, -1, -1, -1, -1, -1],
+#        [-1,  0,  0,  0,  0,  0, -1],
+#        [-1,  0,  0,  0,  0,  0, -1],
+#        [-1,  0,  0,  0,  0,  0, -1],
+#        [-1,  0,  0,  0,  0,  0, -1],
+#        [-1,  0,  0,  0,  0,  0, -1],
+#        [-1, -1, -1, -1, -1, -1, -1]]
+#])
+
 if __name__ == '__main__':
-    main(MAX_X, MAX_Y, TARGET, N_MOVE)
+    main(MAX_X, MAX_Y, N_TARGET, TARGET_TYPE, N_MOVE, board)
 
