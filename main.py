@@ -30,4 +30,3 @@ board[1:-1, 1:-1] = Map.CellType.EMPTY
 
 if __name__ == '__main__':
     main(MAX_X, MAX_Y, N_TARGET, TARGET_TYPE, N_MOVE, board)
-
