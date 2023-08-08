@@ -11,7 +11,7 @@ class Map():
         APPLE = 1
         BANANA = 2
         ORANGE = 3
-        GRAPE = 4
+        #GRAPE = 4
         #WATERMELON = 5
         #STRAWBERRY = 6
         #mango = 7
@@ -35,11 +35,13 @@ class Map():
         self.n_move = n_move
         self.board = board
         self.destroy_target = 0
+        self.matching_target = []
+        self.matching_block = []
 
     def play(self):
         self.block_layout()
         for cnt_move in range(self.n_move):
-            if self.find_matching_block():
+            if self.find_Possible_matching_block():
                 self.select_and_swap()
 
                 while self.isfind_matched_block():
@@ -56,6 +58,60 @@ class Map():
                 return True
 
         return False
+    
+    def find_Possible_matching_block(self):
+        isFind = False
+        for x in range(self.max_x):
+            for y in range(self.max_y):
+                if self.isout_of_range(self.board, x, y):
+                    continue
+            
+                if self.find_block(x, y):
+                    isFind = True
+
+        return isFind
+
+    def find_block(self, x, y):
+        isFind = False
+        for key in self.diretion:
+            self.board_print(self.board)
+
+            dir = self.diretion[str(key)]      
+            isswap, board = self.swap(x, y, dir)
+            if not isswap:
+                continue
+            
+            self.board_print(board)
+            cnt_matched = self.cnt_matched_block(board, x, y)
+            cnt_moved_matched = self.cnt_matched_block(board, x + dir.x, y + dir.y)
+
+            if cnt_matched > 3 or cnt_moved_matched > 3:
+                if board[y][x] == self.target_type or board[y + dir.y][x + dir.x] == self.target_type:
+                    self.matching_target.append({'x' : x, 'y' : y, 'dir': key})
+                else :
+                    self.matching_block.append({'x' : x, 'y' : y, 'dir': key})
+                isFind = True
+        
+        return isFind
+
+    def cnt_matched_block(self, board, x, y):
+        cnt_Vertical = self.matched_in_direction(board, x, y, self.diretion['up']) + self.matched_in_direction(board, x, y, self.diretion['down'])
+        cnt_Landscape = self.matched_in_direction(board, x, y, self.diretion['left']) + self.matched_in_direction(board, x, y, self.diretion['right'])
+        
+        return max(cnt_Vertical, cnt_Landscape)
+
+    def matched_in_direction(self, board, x, y, dir):
+        block_type = board[y][x]
+        cnt = 1
+        x += dir.x
+        y += dir.y
+
+        while not self.isout_of_range(board, x, y) and block_type == board[y][x]:
+            cnt += 1
+            x += dir.x
+            y += dir.y
+
+        return cnt
 
     def block_layout(self):
         for x in range(self.max_x):
@@ -66,39 +122,6 @@ class Map():
         while self.mark_matched_block():
             self.destroy()
             self.fill()
-
-    def find_matching_block(self):
-        isFind = False
-        for x in range(self.max_x):
-            for y in range(self.max_y):
-                if self.isout_of_range(self.board, x, y):
-                    continue
-                
-                for key in self.diretion:
-                    self.board_print(self.board)
-                    if self.find_block(x, y, key):
-                        isFind = True
-
-        return isFind
-
-    def find_block(self, x, y, dir_key):
-        dir = self.diretion[str(dir_key)]
-        
-        isswap, board = self.swap(x, y, dir)
-        if not isswap:            
-            return False
-        
-        count = self.cnt_matched_block(board, x, y) 
-
-        if count >= 3: 
-            if board[y][x] == self.target_type:
-                self.matching_target.append({'x' : x, 'y' : y, 'dir': dir_key})
-            else :
-                self.matching_block.append({'x' : x, 'y' : y, 'dir': dir_key})
-            return True
-        
-        else:
-            return False
 
     def mark_matched_block(self):
         ismarked = False
@@ -112,53 +135,35 @@ class Map():
                 cnt_left = self.matched_in_direction(self.board, x, y, self.diretion['left'])
                 cnt_right = self.matched_in_direction(self.board, x, y, self.diretion['right'])
 
-                if cnt_up + cnt_down + 1 >= 3:
+                if cnt_up + cnt_down > 3:
                     ismarked = True
                     self.ismatched[y][x] = True
 
                     index_y = 1
-                    while index_y <= cnt_up:
+                    while index_y < cnt_up:
                         self.ismatched[y - index_y][x] = True
                         index_y += 1
                     
                     index_y = 1
-                    while index_y <= cnt_down:
+                    while index_y < cnt_down:
                         self.ismatched[y + index_y][x] = True
                         index_y += 1
                         
-                if cnt_left + cnt_right + 1 >= 3:
+                if cnt_left + cnt_right > 3:
                     ismarked = True
                     self.ismatched[y][x] = True
 
                     index_x = 1
-                    while index_x <= cnt_left:
+                    while index_x < cnt_left:
                         self.ismatched[y][x - index_x] = True
                         index_x += 1
                     
-                    while index_x <= cnt_right:
+                    while index_x < cnt_right:
                         self.ismatched[y][x + index_x] = True
                         index_x += 1
 
+        self.board_print(self.board)
         return ismarked
-
-    def cnt_matched_block(self, board, x, y):
-        cnt_Vertical = self.matched_in_direction(board, x, y, self.diretion['up']) + self.matched_in_direction(board, x, y, self.diretion['down']) + 1
-        cnt_Landscape = self.matched_in_direction(board, x, y, self.diretion['left']) + self.matched_in_direction(board, x, y, self.diretion['right']) + 1
-        
-        return max(cnt_Vertical, cnt_Landscape)    
-
-    def matched_in_direction(self, board, x, y, dir):
-        block_type = board[y][x]
-        cnt = 0
-        x += dir.x
-        y += dir.y
-
-        while not self.isout_of_range(board, x, y) and block_type == board[y][x]:
-            cnt += 1
-            x += dir.x
-            y += dir.y
-
-        return cnt
     
     def isout_of_range(self, board, x, y):
         if x >= self.max_x or y >= self.max_y or  x < 0 or y < 0:
@@ -240,6 +245,6 @@ class Map():
             for y in range(self.max_y):
                 if(board[x][y].value != -1) : print(" ", end="")
                 print(board[x][y].value, end=' ')
-            print() 
+            print()
         
-        print('--------------------------')        
+        print('--------------------')
