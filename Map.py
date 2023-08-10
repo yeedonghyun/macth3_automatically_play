@@ -13,12 +13,12 @@ class Map():
         APPLE = 1
         BANANA = 2
         ORANGE = 3
-        #GRAPE = 4
-        #WATERMELON = 5
-        #STRAWBERRY = 6
-        #mango = 7
-        #pineapple = 8
-        #kiwi = 9
+        GRAPE = 4
+        WATERMELON = 5
+        STRAWBERRY = 6
+        mango = 7
+        pineapple = 8
+        kiwi = 9
 
     pos = namedtuple('pos', ['x', 'y'])
 
@@ -35,7 +35,7 @@ class Map():
     drop_diretion['left'] = pos(-1, 0)
     drop_diretion['right'] = pos(1, 0)
 
-    def __init__(self, max_x, max_y, n_target, target_type, n_move, board):
+    def __init__(self, max_x, max_y, n_target, target_type, n_block_type, n_move, board):
         self.ismatched = [[False for _ in range(max_x)] for _ in range(max_y)]
         self.matching_target = []
         self.matching_block = []
@@ -44,6 +44,7 @@ class Map():
         self.max_y = max_y
         self.n_target = n_target
         self.target_type = target_type
+        self.n_block_type = n_block_type
         self.n_move = n_move
         self.board = board
         self.destroy_target = 0
@@ -61,15 +62,18 @@ class Map():
                     self.render_board(self.board)  
                     self.drop_and_fill()
                     self.render_board(self.board)
+
+                    if self.destroy_target >= self.n_target:
+                        return True
                 
                 cnt_move += 1
 
             else:
                 self.shuffle()
+                while self.mark_matched_block():
+                    self.destroy()
+                    self.fill()
                 self.render_board(self.board)  
-
-            if self.destroy_target >= self.n_target:
-                return True
 
         return False
     
@@ -145,7 +149,7 @@ class Map():
         for x in range(self.max_x):
             for y in range(self.max_y):
                 if self.board[y][x] != self.CellType.OBSTACLE:
-                    self.board[y][x] = random.choice(list(self.CellType)[2:])
+                    self.board[y][x] = random.choice(list(self.CellType)[2 : self.n_block_type + 2])
 
         while self.mark_matched_block():
             self.destroy()
@@ -211,8 +215,8 @@ class Map():
 
             self.board = self.swap(self.pos(x, y), self.pos(x + self.diretion[dir].x, y + self.diretion[dir].y))
         
-        self.matching_target.clear
-        self.matching_block.clear
+        self.matching_target.clear()
+        self.matching_block.clear()
 
     def swap(self, pos_1, pos_2):
         board = copy.deepcopy(self.board)
@@ -245,7 +249,7 @@ class Map():
             for cell_pos in self.empty_cell:
 
                 if self.ispeak(cell_pos.y):
-                    self.board[cell_pos.y][cell_pos.x] = random.choice(list(self.CellType)[2:])
+                    self.board[cell_pos.y][cell_pos.x] = random.choice(list(self.CellType)[2 : self.n_block_type + 2])
                     self.empty_cell.remove(cell_pos)
                     isfill_peak = True
 
@@ -276,7 +280,7 @@ class Map():
         for x in range(self.max_x):
             for y in range(self.max_y):
                 if self.board[y][x] == self.CellType.EMPTY:
-                    self.board[y][x] = random.choice(list(self.CellType)[2:])
+                    self.board[y][x] = random.choice(list(self.CellType)[2 : self.n_block_type + 2])
 
     def shuffle(self):
         flat_list = [self.board[y][x] for x in range(self.max_x) for y in range(self.max_y) if self.board[y][x] != self.CellType.OBSTACLE]
@@ -288,10 +292,6 @@ class Map():
                 if self.board[y][x] != self.CellType.OBSTACLE:
                     self.board[y][x] = flat_list[index]
                     index += 1
-
-        while self.mark_matched_block():
-            self.destroy()
-            self.fill()
 
     def clear_mark(self):
         self.ismatched = [[False for _ in range(self.max_x)] for _ in range(self.max_y)]
