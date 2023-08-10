@@ -9,14 +9,15 @@ def main(max_x, max_y, n_target, target_type, n_move, board):
 
 ############### MAIN ################
 
-MAX_X = 7
+MAX_X = 8
 MAX_Y = 7
 N_TARGET = 15
 TARGET_TYPE = Map.CellType.APPLE
 N_MOVE = 40
 
-board = np.full((MAX_X, MAX_Y), Map.CellType.OBSTACLE)
+board = np.full((MAX_Y, MAX_X), Map.CellType.OBSTACLE)
 board[1:-1, 1:-1] = Map.CellType.EMPTY
+board[0][3] = Map.CellType.EMPTY
 
 #board = np.array([
 #    [   [-1, -1, -1, -1, -1, -1, -1],

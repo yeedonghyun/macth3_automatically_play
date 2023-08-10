@@ -20,16 +20,25 @@ class Map():
         #pineapple = 8
         #kiwi = 9
 
-    diretion = {}
     pos = namedtuple('pos', ['x', 'y'])
 
+    diretion = {}
     diretion['up'] = pos(0, -1)
     diretion['down'] = pos(0, 1)
     diretion['left'] = pos(-1, 0)
     diretion['right'] = pos(1, 0)
 
+    drop_diretion = {}
+    drop_diretion['up'] = pos(0, -1)
+    drop_diretion['left_up'] = pos(-1, -1)
+    drop_diretion['right_up'] = pos(1, -1)
+    drop_diretion['left'] = pos(-1, 0)
+    drop_diretion['right'] = pos(1, 0)
+
     def __init__(self, max_x, max_y, n_target, target_type, n_move, board):
         self.ismatched = [[False for _ in range(max_x)] for _ in range(max_y)]
+        self.matching_target = []
+        self.matching_block = []
         self.empty_cell = []
         self.max_x = max_x
         self.max_y = max_y
@@ -38,8 +47,6 @@ class Map():
         self.n_move = n_move
         self.board = board
         self.destroy_target = 0
-        self.matching_target = []
-        self.matching_block = []
 
     def play(self):
         self.block_layout()
@@ -77,16 +84,31 @@ class Map():
     def find_block(self, x, y):
         isFind = False
         for key in self.diretion:
-            dir = self.diretion[str(key)]    
-            if self.isout_of_range(self.board, x + dir.x, y + dir.y):
+            dir = self.diretion[str(key)]
+            move_pos = self.pos(x + dir.x, y + dir.y)
+            if self.isout_of_range(self.board, move_pos.x, move_pos.y):
                 continue
+            
+            board = self.swap(self.pos(x, y), self.pos(x + dir.x, y + dir.y))
 
-            board = self.swap(x, y, dir)            
             cnt_matched = self.cnt_matched_block(board, x, y)
-            cnt_moved_matched = self.cnt_matched_block(board, x + dir.x, y + dir.y)
+            cnt_moved_matched = self.cnt_matched_block(board, move_pos.x, move_pos.y)
 
-            if cnt_matched > 3 or cnt_moved_matched > 3:
-                if board[y][x] == self.target_type or board[y + dir.y][x + dir.x] == self.target_type:
+            if cnt_matched > 3 and cnt_moved_matched > 3:
+                if board[y][x] == self.target_type or board[move_pos.y][move_pos.x] == self.target_type:
+                    self.matching_target.append({'x' : x, 'y' : y, 'dir': key})
+                else :
+                    self.matching_block.append({'x' : x, 'y' : y, 'dir': key})
+
+            elif cnt_matched > 3:
+                if board[y][x] == self.target_type:
+                    self.matching_target.append({'x' : x, 'y' : y, 'dir': key})
+                else :
+                    self.matching_block.append({'x' : x, 'y' : y, 'dir': key})
+                isFind = True
+
+            elif cnt_moved_matched > 3:
+                if board[move_pos.y][move_pos.x] == self.target_type == self.target_type:
                     self.matching_target.append({'x' : x, 'y' : y, 'dir': key})
                 else :
                     self.matching_block.append({'x' : x, 'y' : y, 'dir': key})
@@ -173,7 +195,7 @@ class Map():
             y = random_element['y']
             dir = random_element['dir']
 
-            self.board = self.swap(x, y, self.diretion[dir])
+            self.board = self.swap(self.pos(x, y), self.pos(x + self.diretion[dir].x, y + self.diretion[dir].y))
         
         else:
             random_element = random.choice(self.matching_block)
@@ -181,17 +203,16 @@ class Map():
             y = random_element['y']
             dir = random_element['dir']
 
-            self.board = self.swap(x, y, self.diretion[dir])
+            self.board = self.swap(self.pos(x, y), self.pos(x + self.diretion[dir].x, y + self.diretion[dir].y))
         
         self.matching_target.clear
         self.matching_block.clear
 
-    def swap(self, x, y, dir):
-
+    def swap(self, pos_1, pos_2):
         board = copy.deepcopy(self.board)
-        temp = board[y][x]
-        board[y][x] = board[y + dir.y][x + dir.x]
-        board[y + dir.y][x + dir.x] = temp
+        temp = board[pos_1.y][pos_1.x]
+        board[pos_1.y][pos_1.x] = board[pos_2.y][pos_2.x]
+        board[pos_2.y][pos_2.x] = temp
         
         return board
     
@@ -204,65 +225,73 @@ class Map():
                         n_destroy_target += 1
                     self.board[y][x] = self.CellType.EMPTY
                     self.empty_cell.append(self.pos(x, y))
-
         
         self.clear_mark()
         return n_destroy_target
 
-    def shuffle(self):
-        flat_list = [self.board[y][x] for x in range(self.max_x) for y in range(self.max_y) if self.board[y][x] != self.CellType.EMPTY]
-        random.shuffle(flat_list)
-
-        index = 0
-        for x in range(self.max_x):
-            for y in range(self.max_y):
-                self.board[y][x] = flat_list[index]
-                index += 1
-
-        while self.mark_matched_block():
-            self.destroy()
-            self.fill()
-
     def drop(self):
-        temp_list_size = len(self.empty_cell) + 1
-        while not self.empty_cell and temp_list_size != len(self.empty_cell):
-            for cell_pos in self.empty_block:
+        self.render_board(self.board)
+
+        if len(self.empty_cell) == 0:
+            return
+        
+        has_child = [[False for y in range(self.max_x)] for x in range(self.max_y)]
+                
+        while len(self.empty_cell) != 0:
+            remove_list = []
+            elected_list = []
+            for cell_pos in self.empty_cell:
 
                 if self.ispeak(cell_pos.y):
                     self.board[cell_pos.y][cell_pos.x] = random.choice(list(self.CellType)[2:])
+                    self.empty_cell.remove(cell_pos)
 
-                elif self.isempty_or_obstacle(cell_pos.x, cell_pos.y, self.pos(0, -1)): #up
-                    success, self.board = self.swap(cell_pos.x, cell_pos.y, self.pos(0, -1))
-                    self.empty_block.append(self.pos(cell_pos.x, cell_pos.y - 1))
-                    self.empty_block.remove(cell_pos)
+                else :
+                    for key in self.drop_diretion:
+                        dir = self.drop_diretion[key]
+                        candidate_pos = self.pos(cell_pos.x + dir.x, cell_pos.y + dir.y)
 
-                elif self.isempty_or_obstacle(cell_pos.x, cell_pos.y, self.pos(1, -1)): #right up
-                    success, self.board = self.swap(cell_pos.x, cell_pos.y, self.pos(1, -1))
-                    self.empty_block.append(self.pos(cell_pos.x + 1, cell_pos.y - 1))
-                    self.empty_block.remove(cell_pos)
-
-                elif self.isempty_or_obstacle(cell_pos.x, cell_pos.y, self.pos(-1, -1)): #left up
-                    success, self.board = self.swap(cell_pos.x, cell_pos.y, self.pos(-1, -1))
-                    self.empty_block.append(self.pos(cell_pos.x - 1, cell_pos.y - 1))
-                    self.empty_block.remove(cell_pos)
-
-                elif self.isempty_or_obstacle(cell_pos.x, cell_pos.y, self.pos(1, 0)): #right
-                    success, self.board = self.swap(cell_pos.x, cell_pos.y, self.pos(1, 0))
-                    self.empty_block.append(self.pos(cell_pos.x + 1, cell_pos.y))
-                    self.empty_block.remove(cell_pos)
-
-                elif self.isempty_or_obstacle(cell_pos.x, cell_pos.y, self.pos(-1, 0)): #left
-                    success, self.board = self.swap(cell_pos.x, cell_pos.y, self.pos(1, 0))
-                    self.empty_block.append(self.pos(cell_pos.x - 1, cell_pos.y))
-                    self.empty_block.remove(cell_pos)
-
-            temp_list_size = len(self.empty_cell)
+                        if self.board[candidate_pos.y][candidate_pos.x] == self.CellType.EMPTY:
+                            break
+                        
+                        if self.board[candidate_pos.y][candidate_pos.x] != self.CellType.OBSTACLE and has_child[candidate_pos.y][candidate_pos.x] == False:
+                            elected_list.append(candidate_pos)
+                            remove_list.append(cell_pos)
+                            has_child[candidate_pos.y][candidate_pos.x] = True
+                            break
+            
+            if len(remove_list) == 0:
+                break
+            
+            for remove, elected in zip(remove_list, elected_list):
+                self.empty_cell.remove(remove)
+                self.empty_cell.append(elected)
+                self.board = self.swap(elected, remove)
+                self.render_board(self.board)
+                has_child[elected.y][elected.x] = False
 
     def fill(self):
         for x in range(self.max_x):
             for y in range(self.max_y):
                 if self.board[y][x] == self.CellType.EMPTY:
                     self.board[y][x] = random.choice(list(self.CellType)[2:])
+
+        self.empty_cell.clear()
+
+    def shuffle(self):
+        flat_list = [self.board[y][x] for x in range(self.max_x) for y in range(self.max_y) if self.board[y][x] != self.CellType.OBSTACLE]
+        random.shuffle(flat_list)
+
+        index = 0
+        for x in range(self.max_x):
+            for y in range(self.max_y):
+                if self.board[y][x] != self.CellType.OBSTACLE:
+                    self.board[y][x] = flat_list[index]
+                    index += 1
+
+        while self.mark_matched_block():
+            self.destroy()
+            self.fill()
 
     def clear_mark(self):
         self.ismatched = [[False for _ in range(self.max_x)] for _ in range(self.max_y)]
@@ -279,17 +308,9 @@ class Map():
     def ispeak(self, y):
         if(y == 0): return True
         return False
-    
-    def isempty_or_obstacle(self, x, y, dir):
-        if self.board[y + dir.y][x + dir.x] == self.CellType.EMPTY:
-            return True
-        if self.board[y + dir.y][x + dir.x] == self.CellType.OBSTACLE:
-            return True
         
-        return False
-    
     def render_board(self, board):
-        temp_board = np.full((self.max_x, self.max_y), 0)
+        temp_board = np.full((self.max_y, self.max_x), 0)
         
         for x in range(self.max_x):
             for y in range(self.max_y):
