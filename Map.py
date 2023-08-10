@@ -50,19 +50,23 @@ class Map():
 
     def play(self):
         self.block_layout()
+        self.render_board(self.board)
         for cnt_move in range(self.n_move):
             if self.find_Possible_matching_block():
                 self.select_and_swap()
+                self.render_board(self.board)   
 
                 while self.mark_matched_block():
                     self.destroy_target += self.destroy()
-                    self.drop()
-                    self.fill()
+                    self.render_board(self.board)  
+                    self.drop_and_fill()
+                    self.render_board(self.board)
                 
                 cnt_move += 1
 
             else:
                 self.shuffle()
+                self.render_board(self.board)  
 
             if self.destroy_target >= self.n_target:
                 return True
@@ -147,6 +151,8 @@ class Map():
             self.destroy()
             self.fill()
 
+        self.empty_cell.clear()
+
     def mark_matched_block(self):
         ismarked = False
         for x in range(self.max_x):
@@ -229,45 +235,41 @@ class Map():
         self.clear_mark()
         return n_destroy_target
 
-    def drop(self):
-        self.render_board(self.board)
-
-        if len(self.empty_cell) == 0:
-            return
-        
+    def drop_and_fill(self):
         has_child = [[False for y in range(self.max_x)] for x in range(self.max_y)]
                 
         while len(self.empty_cell) != 0:
             remove_list = []
             elected_list = []
+            isfill_peak = False
             for cell_pos in self.empty_cell:
 
                 if self.ispeak(cell_pos.y):
                     self.board[cell_pos.y][cell_pos.x] = random.choice(list(self.CellType)[2:])
                     self.empty_cell.remove(cell_pos)
+                    isfill_peak = True
 
                 else :
                     for key in self.drop_diretion:
                         dir = self.drop_diretion[key]
                         candidate_pos = self.pos(cell_pos.x + dir.x, cell_pos.y + dir.y)
 
-                        if self.board[candidate_pos.y][candidate_pos.x] == self.CellType.EMPTY:
+                        if self.board[candidate_pos.y][candidate_pos.x] == self.CellType.EMPTY or has_child[candidate_pos.y][candidate_pos.x] == True:
                             break
                         
-                        if self.board[candidate_pos.y][candidate_pos.x] != self.CellType.OBSTACLE and has_child[candidate_pos.y][candidate_pos.x] == False:
+                        if self.board[candidate_pos.y][candidate_pos.x] != self.CellType.OBSTACLE:
                             elected_list.append(candidate_pos)
                             remove_list.append(cell_pos)
                             has_child[candidate_pos.y][candidate_pos.x] = True
                             break
             
-            if len(remove_list) == 0:
+            if len(remove_list) == 0 and not isfill_peak:
                 break
             
             for remove, elected in zip(remove_list, elected_list):
                 self.empty_cell.remove(remove)
                 self.empty_cell.append(elected)
                 self.board = self.swap(elected, remove)
-                self.render_board(self.board)
                 has_child[elected.y][elected.x] = False
 
     def fill(self):
@@ -275,8 +277,6 @@ class Map():
             for y in range(self.max_y):
                 if self.board[y][x] == self.CellType.EMPTY:
                     self.board[y][x] = random.choice(list(self.CellType)[2:])
-
-        self.empty_cell.clear()
 
     def shuffle(self):
         flat_list = [self.board[y][x] for x in range(self.max_x) for y in range(self.max_y) if self.board[y][x] != self.CellType.OBSTACLE]
