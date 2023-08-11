@@ -3,6 +3,7 @@ import copy
 import numpy as np
 
 from matplotlib import pyplot
+from matplotlib import pyplot as plt
 from enum import Enum
 from collections import namedtuple
 
@@ -20,6 +21,11 @@ class Map():
         pineapple = 8
         kiwi = 9
 
+    class DebugMode(Enum):
+        PART = 0
+        MOVE = 1
+        RESULT = 2
+
     pos = namedtuple('pos', ['x', 'y'])
 
     diretion = {}
@@ -33,9 +39,9 @@ class Map():
     drop_diretion['left_up'] = pos(-1, -1)
     drop_diretion['right_up'] = pos(1, -1)
     drop_diretion['left'] = pos(-1, 0)
-    drop_diretion['right'] = pos(1, 0)
+    #drop_diretion['right'] = pos(1, 0)
 
-    def __init__(self, max_x, max_y, n_target, target_type, n_block_type, n_move, board):
+    def __init__(self, max_x, max_y, n_target, target_type, n_block_type, n_move, board, debug_mode):
         self.ismatched = [[False for _ in range(max_x)] for _ in range(max_y)]
         self.matching_target = []
         self.matching_block = []
@@ -48,44 +54,49 @@ class Map():
         self.n_move = n_move
         self.board = board
         self.destroy_target = 0
+        self.peak = []
+        self.cnt_move = 0
+        self.debug_mode = debug_mode
 
     def play(self):
-        self.block_layout()
-        self.render_board(self.board)
-        for cnt_move in range(self.n_move):
+        assert self.isvalidation_from_board(), "The all top space where the block will be created is blocked by obstacles."  
+
+        self.block_layout()            
+        while self.cnt_move < self.n_move:
             if self.find_Possible_matching_block():
                 self.select_and_swap()
-                self.render_board(self.board)   
 
                 while self.mark_matched_block():
                     self.destroy_target += self.destroy()
-                    self.render_board(self.board)  
                     self.drop_and_fill()
-                    self.render_board(self.board)
 
                     if self.destroy_target >= self.n_target:
+                        self.render_board(self.board, 'success')
                         return True
                 
-                cnt_move += 1
+                self.cnt_move += 1
 
             else:
                 self.shuffle()
                 while self.mark_matched_block():
                     self.destroy()
                     self.fill()
-                self.render_board(self.board)  
-
+        
+        self.render_board(self.board, 'fail')
         return False
     
     def find_Possible_matching_block(self):
         isFind = False
         for x in range(self.max_x):
             for y in range(self.max_y):
-                if self.isout_of_range(self.board, x, y):
+                if self.isout_of_range(self.board, self.pos(x, y)):
                     continue
             
                 if self.find_block(x, y):
                     isFind = True
+        
+        if self.debug_mode == self.DebugMode.MOVE:
+            self.render_board(self.board, 'MOVE')
 
         return isFind
 
@@ -94,34 +105,20 @@ class Map():
         for key in self.diretion:
             dir = self.diretion[str(key)]
             move_pos = self.pos(x + dir.x, y + dir.y)
-            if self.isout_of_range(self.board, move_pos.x, move_pos.y):
+            if self.isout_of_range(self.board, move_pos):
                 continue
             
             board = self.swap(self.pos(x, y), self.pos(x + dir.x, y + dir.y))
 
             cnt_matched = self.cnt_matched_block(board, x, y)
-            cnt_moved_matched = self.cnt_matched_block(board, move_pos.x, move_pos.y)
 
-            if cnt_matched > 3 and cnt_moved_matched > 3:
-                if board[y][x] == self.target_type or board[move_pos.y][move_pos.x] == self.target_type:
-                    self.matching_target.append({'x' : x, 'y' : y, 'dir': key})
-                else :
-                    self.matching_block.append({'x' : x, 'y' : y, 'dir': key})
-
-            elif cnt_matched > 3:
+            if cnt_matched > 3:
                 if board[y][x] == self.target_type:
                     self.matching_target.append({'x' : x, 'y' : y, 'dir': key})
                 else :
                     self.matching_block.append({'x' : x, 'y' : y, 'dir': key})
                 isFind = True
 
-            elif cnt_moved_matched > 3:
-                if board[move_pos.y][move_pos.x] == self.target_type == self.target_type:
-                    self.matching_target.append({'x' : x, 'y' : y, 'dir': key})
-                else :
-                    self.matching_block.append({'x' : x, 'y' : y, 'dir': key})
-                isFind = True
-        
         return isFind
 
     def cnt_matched_block(self, board, x, y):
@@ -138,7 +135,7 @@ class Map():
         x += dir.x
         y += dir.y
 
-        while not self.isout_of_range(board, x, y) and block_type == board[y][x]:
+        while not self.isout_of_range(board, self.pos(x, y)) and block_type == board[y][x]:
             cnt += 1
             x += dir.x
             y += dir.y
@@ -157,11 +154,14 @@ class Map():
 
         self.empty_cell.clear()
 
+        if self.debug_mode == self.DebugMode.PART:
+            self.render_board(self.board, 'block_layout')
+
     def mark_matched_block(self):
         ismarked = False
         for x in range(self.max_x):
             for y in range(self.max_y):
-                if self.isout_of_range(self.board, x, y):
+                if self.isout_of_range(self.board, self.pos(x, y)):
                     continue
                 
                 cnt_up = self.matched_in_direction(self.board, x, y, self.diretion['up'])
@@ -217,6 +217,9 @@ class Map():
         
         self.matching_target.clear()
         self.matching_block.clear()
+        
+        if self.debug_mode == self.DebugMode.PART:
+            self.render_board(self.board, 'select_and_swap')
 
     def swap(self, pos_1, pos_2):
         board = copy.deepcopy(self.board)
@@ -224,6 +227,9 @@ class Map():
         board[pos_1.y][pos_1.x] = board[pos_2.y][pos_2.x]
         board[pos_2.y][pos_2.x] = temp
         
+        if self.debug_mode == self.DebugMode.PART:
+            self.render_board(self.board, 'swap')
+
         return board
     
     def destroy(self):
@@ -237,50 +243,77 @@ class Map():
                     self.empty_cell.append(self.pos(x, y))
         
         self.clear_mark()
+
+        if self.debug_mode == self.DebugMode.PART:
+            self.render_board(self.board, 'destroy')
+
         return n_destroy_target
 
     def drop_and_fill(self):
-        has_child = [[False for y in range(self.max_x)] for x in range(self.max_y)]
-                
-        while len(self.empty_cell) != 0:
+        has_child = [[False for _ in range(self.max_x)] for _ in range(self.max_y)]
+        isFill = True
+
+        while isFill:
+            isFill = False
             remove_list = []
             elected_list = []
-            isfill_peak = False
             for cell_pos in self.empty_cell:
-
-                if self.ispeak(cell_pos.y):
+                if self.ispeak(cell_pos):
                     self.board[cell_pos.y][cell_pos.x] = random.choice(list(self.CellType)[2 : self.n_block_type + 2])
                     self.empty_cell.remove(cell_pos)
-                    isfill_peak = True
+                    isFill = True
+                    continue
 
-                else :
-                    for key in self.drop_diretion:
-                        dir = self.drop_diretion[key]
-                        candidate_pos = self.pos(cell_pos.x + dir.x, cell_pos.y + dir.y)
+                for key in self.drop_diretion:
+                    dir = self.drop_diretion[key]
+                    candidate_pos = self.pos(cell_pos.x + dir.x, cell_pos.y + dir.y)
 
-                        if self.board[candidate_pos.y][candidate_pos.x] == self.CellType.EMPTY or has_child[candidate_pos.y][candidate_pos.x] == True:
-                            break
-                        
-                        if self.board[candidate_pos.y][candidate_pos.x] != self.CellType.OBSTACLE:
-                            elected_list.append(candidate_pos)
-                            remove_list.append(cell_pos)
-                            has_child[candidate_pos.y][candidate_pos.x] = True
-                            break
-            
-            if len(remove_list) == 0 and not isfill_peak:
-                break
+                    if key == 'left':
+                        left = -1
+                        right = 1
+
+                        while True:
+                            if cell_pos.x + left < 0 and cell_pos.x + right >= self.max_x:
+                                break
+
+                            if cell_pos.x + left > -1 and self.board[0][cell_pos.x + left] != self.CellType.OBSTACLE:
+                                candidate_pos = self.pos(cell_pos.x + dir.x, cell_pos.y + dir.y)
+                                break
+                            
+                            elif cell_pos.x + right < self.max_x and self.board[0][cell_pos.x + right] != self.CellType.OBSTACLE:
+                                candidate_pos = self.pos(cell_pos.x - dir.x, cell_pos.y - dir.y)
+                                break
+
+                            left -= 1
+                            right += 1
+
+                    if has_child[candidate_pos.y][candidate_pos.x] == True or self.board[candidate_pos.y][candidate_pos.x] == self.CellType.EMPTY:
+                        break
+
+                    if self.board[candidate_pos.y][candidate_pos.x] != self.CellType.OBSTACLE:
+                        elected_list.append(candidate_pos)
+                        remove_list.append(cell_pos)
+                        has_child[candidate_pos.y][candidate_pos.x] = True
+                        break
             
             for remove, elected in zip(remove_list, elected_list):
-                self.empty_cell.remove(remove)
-                self.empty_cell.append(elected)
+                isFill = True
                 self.board = self.swap(elected, remove)
+                self.empty_cell.remove(remove)
                 has_child[elected.y][elected.x] = False
+                self.empty_cell.append(elected)
+        
+        if self.debug_mode == self.DebugMode.PART:
+            self.render_board(self.board, 'drop_and_fill')
 
     def fill(self):
         for x in range(self.max_x):
             for y in range(self.max_y):
                 if self.board[y][x] == self.CellType.EMPTY:
                     self.board[y][x] = random.choice(list(self.CellType)[2 : self.n_block_type + 2])
+        
+        if self.debug_mode == self.DebugMode.PART:
+            self.render_board(self.board, 'fill')
 
     def shuffle(self):
         flat_list = [self.board[y][x] for x in range(self.max_x) for y in range(self.max_y) if self.board[y][x] != self.CellType.OBSTACLE]
@@ -293,23 +326,26 @@ class Map():
                     self.board[y][x] = flat_list[index]
                     index += 1
 
+        if self.debug_mode == self.DebugMode.PART and self.debug_mode == self.DebugMode.MOVE:
+            self.render_board(self.board, 'shuffle')            
+
     def clear_mark(self):
         self.ismatched = [[False for _ in range(self.max_x)] for _ in range(self.max_y)]
 
-    def isout_of_range(self, board, x, y):
-        if x >= self.max_x or y >= self.max_y or  x < 0 or y < 0:
+    def isout_of_range(self, board, pos):
+        if pos.x >= self.max_x or pos.y >= self.max_y or pos.x < 0 or pos.y < 0:
             return True
         
-        if board[y][x] == self.CellType.OBSTACLE:
+        if board[pos.y][pos.x] == self.CellType.OBSTACLE:
             return True
         
         return False
     
-    def ispeak(self, y):
-        if(y == 0): return True
+    def ispeak(self, pos):
+        if(pos.y == 0): return True
         return False
-        
-    def render_board(self, board):
+    
+    def render_board(self, board, state):
         temp_board = np.full((self.max_y, self.max_x), 0)
         
         for x in range(self.max_x):
@@ -317,7 +353,24 @@ class Map():
                 temp_board[y][x] = board[y][x].value
 
         float_array = temp_board.astype(float)
+        target = 'num of destroy target : ' + str(self.destroy_target)
+        n_move = 'number of move : ' + str(self.cnt_move)
+
+        if self.debug_mode != self.DebugMode.RESULT:
+            state = 'current state : ' + state
+
         pyplot.figure(figsize=(self.max_y, self.max_x))
         pyplot.imshow(float_array)
         pyplot.xticks([])
+        plt.text(2, -1, state, color='red', fontsize=20, ha='center', va='center')
+        plt.text(2, -1.5, target, color='red', fontsize=12, ha='center', va='center')
+        plt.text(2, -2, n_move, color='red', fontsize=12, ha='center', va='center')
         pyplot.show()
+
+    def isvalidation_from_board(self):
+        for x in range(self.max_x):
+            self.peak.append(self.pos(x,0))
+            if self.board[0][x] == self.CellType.EMPTY:
+                return True
+            
+        return False
