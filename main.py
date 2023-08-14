@@ -1,14 +1,14 @@
 from Map import Map
 import numpy as np
 
-def main(max_x, max_y, n_target, target_type, n_block_type, n_move, board, rendering_mode):    
-    test = Map(max_x, max_y, n_target, target_type, n_block_type, n_move, board, rendering_mode)
+def main(n_target, target_type, n_block_type, n_move, board, rendering_mode):    
+    test = Map(n_target, target_type, n_block_type, n_move, board, rendering_mode)
     is_clear = test.play()
     print(is_clear)
 
 ############### MAIN ################
 
-MAX_X = 7
+MAX_X = 8
 MAX_Y = 7
 N_TARGET = 20
 N_BLOCK_TYPE = 5
@@ -24,4 +24,4 @@ board[3][3] = Map.CellType.OBSTACLE
 board[3][5] = Map.CellType.OBSTACLE
 
 if __name__ == '__main__':
-    main(MAX_X, MAX_Y, N_TARGET, TARGET_TYPE, N_BLOCK_TYPE, N_MOVE, board, RENDERING_MODE)
+    main(N_TARGET, TARGET_TYPE, N_BLOCK_TYPE, N_MOVE, board, RENDERING_MODE)

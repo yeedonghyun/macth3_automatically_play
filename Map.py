@@ -41,13 +41,13 @@ class Map():
     drop_diretion['left'] = pos(-1, 0)
     #drop_diretion['right'] = pos(1, 0)
 
-    def __init__(self, max_x, max_y, n_target, target_type, n_block_type, n_move, board, rendering_mode):
-        self.ismatched = [[False for _ in range(max_x)] for _ in range(max_y)]
+    def __init__(self, n_target, target_type, n_block_type, n_move, board, rendering_mode):
+        self.max_x = len(board[0])
+        self.max_y = len(board)
+        self.ismatched = [[False for _ in range(self.max_x)] for _ in range(self.max_y)]
         self.matching_target = []
         self.matching_block = []
         self.empty_cell = []
-        self.max_x = max_x
-        self.max_y = max_y
         self.n_target = n_target
         self.target_type = target_type
         self.n_block_type = n_block_type
