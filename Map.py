@@ -21,7 +21,7 @@ class Map():
         pineapple = 8
         kiwi = 9
 
-    class DebugMode(Enum):
+    class RenderingMode(Enum):
         PART = 0
         MOVE = 1
         RESULT = 2
@@ -41,7 +41,7 @@ class Map():
     drop_diretion['left'] = pos(-1, 0)
     #drop_diretion['right'] = pos(1, 0)
 
-    def __init__(self, max_x, max_y, n_target, target_type, n_block_type, n_move, board, debug_mode):
+    def __init__(self, max_x, max_y, n_target, target_type, n_block_type, n_move, board, rendering_mode):
         self.ismatched = [[False for _ in range(max_x)] for _ in range(max_y)]
         self.matching_target = []
         self.matching_block = []
@@ -56,7 +56,7 @@ class Map():
         self.destroy_target = 0
         self.peak = []
         self.cnt_move = 0
-        self.debug_mode = debug_mode
+        self.rendering_mode = rendering_mode
 
     def play(self):
         assert self.isvalidation_from_board(), "The all top space where the block will be created is blocked by obstacles."  
@@ -95,7 +95,7 @@ class Map():
                 if self.find_block(x, y):
                     isFind = True
         
-        if self.debug_mode == self.DebugMode.MOVE:
+        if self.rendering_mode == self.rendering_mode.MOVE:
             self.render_board(self.board, 'MOVE')
 
         return isFind
@@ -154,7 +154,7 @@ class Map():
 
         self.empty_cell.clear()
 
-        if self.debug_mode == self.DebugMode.PART:
+        if self.rendering_mode == self.rendering_mode.PART:
             self.render_board(self.board, 'block_layout')
 
     def mark_matched_block(self):
@@ -218,7 +218,7 @@ class Map():
         self.matching_target.clear()
         self.matching_block.clear()
         
-        if self.debug_mode == self.DebugMode.PART:
+        if self.rendering_mode == self.rendering_mode.PART:
             self.render_board(self.board, 'select_and_swap')
 
     def swap(self, pos_1, pos_2):
@@ -227,7 +227,7 @@ class Map():
         board[pos_1.y][pos_1.x] = board[pos_2.y][pos_2.x]
         board[pos_2.y][pos_2.x] = temp
         
-        if self.debug_mode == self.DebugMode.PART:
+        if self.rendering_mode == self.rendering_mode.PART:
             self.render_board(self.board, 'swap')
 
         return board
@@ -244,7 +244,7 @@ class Map():
         
         self.clear_mark()
 
-        if self.debug_mode == self.DebugMode.PART:
+        if self.rendering_mode == self.RenderingMode.PART:
             self.render_board(self.board, 'destroy')
 
         return n_destroy_target
@@ -303,7 +303,7 @@ class Map():
                 has_child[elected.y][elected.x] = False
                 self.empty_cell.append(elected)
         
-        if self.debug_mode == self.DebugMode.PART:
+        if self.rendering_mode == self.rendering_mode.PART:
             self.render_board(self.board, 'drop_and_fill')
 
     def fill(self):
@@ -312,7 +312,7 @@ class Map():
                 if self.board[y][x] == self.CellType.EMPTY:
                     self.board[y][x] = random.choice(list(self.CellType)[2 : self.n_block_type + 2])
         
-        if self.debug_mode == self.DebugMode.PART:
+        if self.rendering_mode == self.rendering_mode.PART:
             self.render_board(self.board, 'fill')
 
     def shuffle(self):
@@ -326,7 +326,7 @@ class Map():
                     self.board[y][x] = flat_list[index]
                     index += 1
 
-        if self.debug_mode == self.DebugMode.PART and self.debug_mode == self.DebugMode.MOVE:
+        if self.rendering_mode == self.rendering_mode.PART and self.rendering_mode == self.rendering_mode.MOVE:
             self.render_board(self.board, 'shuffle')            
 
     def clear_mark(self):
@@ -356,7 +356,7 @@ class Map():
         target = 'num of destroy target : ' + str(self.destroy_target)
         n_move = 'number of move : ' + str(self.cnt_move)
 
-        if self.debug_mode != self.DebugMode.RESULT:
+        if self.rendering_mode != self.rendering_mode.RESULT:
             state = 'current state : ' + state
 
         pyplot.figure(figsize=(self.max_y, self.max_x))
